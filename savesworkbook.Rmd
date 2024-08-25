@@ -1,0 +1,69 @@
+---
+title: "goalie_saves"
+author: "sam toole"
+date: "2024-08-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This chunk reads a table from FBref with stats on goalies from the 'Big 5' Leagues
+```{r}
+GK=read_html('https://fbref.com/en/comps/Big5/keepers/players/Big-5-European-Leagues-Stats',as.data.frame=TRUE,stringAsFactors=TRUE) %>% html_nodes("table") %>% .[[1]] %>% html_table(fill=TRUE)
+```
+
+This cleans the data, converts the column types to numeric, and adds a few additional stats 
+```{r}
+
+names(GK) <- GK[1,]
+GK <- GK[-1,] 
+GK <- GK[,-1] 
+GK <- GK[, -((ncol(GK)-1):ncol(GK))]
+
+GK <- GK %>%
+  mutate(
+    MP = as.numeric(MP),
+    Starts = as.numeric(Starts),
+    Min = as.numeric(Min),
+    `90s` = as.numeric(`90s`),
+    GA = as.numeric(GA),
+    GA90 = as.numeric(GA90),
+    SoTA = as.numeric(SoTA),
+    Saves = as.numeric(Saves),
+    `Save%` = as.numeric(`Save%`),
+    W = as.numeric(W),
+    D = as.numeric(D),
+    L = as.numeric(L),
+    CS = as.numeric(CS),
+    `CS%` = as.numeric(`CS%`),
+    PKatt = as.numeric(PKatt),
+    PKA = as.numeric(PKA),
+    PKsv = as.numeric(PKsv),
+    PKm = as.numeric(PKm),
+  )
+  
+GK$SoTA90 <- GK$SoTA / GK$`90s`
+GK$exSaves <- GK$SoTA90 * (GK$`Save%`/100)
+
+```
+
+Specifing the model 
+```{r, ECHO = FALSE, include=FALSE}
+
+model_saving <- lm(exSaves ~ MP + Starts + Min + `90s` + GA + GA90 + SoTA + Saves + 
+                     `Save%` + W + D + L + CS + `CS%` + PKatt + PKA + PKsv + 
+                     PKm + `Save%` + SoTA90, data = GK)
+summary(model_saving)
+```
+
+
+Insert keeper name and then run chunk to estimate saves using the model
+```{r}
+goalie <- GK %>% filter(Player == "Guglielmo Vicario")
+
+predicted_saves_goalkeeper1 <- predict(model_saving, newdata = goalie)
+print(predicted_saves_goalkeeper1)
+```
+
