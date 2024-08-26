@@ -58,9 +58,9 @@ GK$exSaves <- GK$SoTA90 * (GK$`Save%`/100)
 Specifing the model 
 ```{r, ECHO = FALSE, include=FALSE}
 
-model_saving <- lm(exSaves ~ MP + Starts + Min + `90s` + GA + GA90 + SoTA + 
+model_saving <- lm(exSaves ~ MP + `90s` + GA + GA90 + SoTA + 
                      `Save%` + W + D + L + CS + `CS%` + PKatt + PKA + PKsv + 
-                     PKm + `Save%` + SoTA90, data = GK)
+                     PKm + SoTA90, data = GK)
 summary(model_saving)
 ```
 
@@ -74,7 +74,7 @@ print(predicted_saves_goalkeeper1)
 ```
 
 
-And here is a similar model to predict how many saved shots a team may get 
+And here is a similar model to predict how many saved shots a team may have 
 ```{r}
 tmshots=read_html('https://fbref.com/en/comps/Big5/shooting/squads/Big-5-European-Leagues-Stats',as.data.frame=TRUE,stringAsFactors=TRUE) %>% html_nodes("table") %>% .[[1]] %>% html_table(fill=TRUE)
 names(tmshots) <- tmshots[1,]
@@ -94,7 +94,39 @@ model_shooting <- lm(exsvs ~ `Sh/90` + `SoT/90` +
 Input the team name here to get an estimation of how many saves a keeper will get playing against them. 
 ```{r}
 opshots <- tmshots %>% filter(Squad == "Nott'ham Forest")
-predicted_shots_saved <- predict(model_shooting, newdata = opshots)
 
-unname(predicted_shots_saved)
+predicted_shots_saved <- suppressWarnings(predict(model_shooting, newdata = opshots))
+attr(predicted_shots_saved, "non-estim") <- NULL
+predicted_shots_saved_clean <- unname(predicted_shots_saved)
+print(predicted_shots_saved_clean)
+
 ```
+
+
+Making some graphs from our data
+
+
+```{r}
+library(ggplot2)
+
+GK_filtered <- GK %>% filter(Comp == "eng Premier League")
+
+ggplot(GK_filtered, aes(x = Player, y = exSaves)) +
+  geom_bar(stat = "identity", fill = "navy") +
+  theme_minimal() +
+  labs(title = "Expected Saves by Goalkeeper (English Premier League)", x = "Player", y = "Expected Saves") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+```{r}
+tmshots_filtered <- tmshots %>% filter(Comp == "eng Premier League")
+
+ggplot(tmshots_filtered, aes(x = Squad, y = exsvs)) +
+  geom_bar(stat = "identity", fill = "navy") +
+  theme_minimal() +
+  labs(title = "Expected Saves by Squad (English Premier League)", x = "Squad", y = "Expected Shots Saved") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
