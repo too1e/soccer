@@ -9,6 +9,12 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+#install.packages(dplyr)
+library(dplyr)
+```
+
+
 This chunk reads a table from FBref with stats on goalies from the 'Big 5' Leagues
 ```{r}
 GK=read_html('https://fbref.com/en/comps/Big5/keepers/players/Big-5-European-Leagues-Stats',as.data.frame=TRUE,stringAsFactors=TRUE) %>% html_nodes("table") %>% .[[1]] %>% html_table(fill=TRUE)
@@ -52,7 +58,7 @@ GK$exSaves <- GK$SoTA90 * (GK$`Save%`/100)
 Specifing the model 
 ```{r, ECHO = FALSE, include=FALSE}
 
-model_saving <- lm(exSaves ~ MP + Starts + Min + `90s` + GA + GA90 + SoTA + Saves + 
+model_saving <- lm(exSaves ~ MP + Starts + Min + `90s` + GA + GA90 + SoTA + 
                      `Save%` + W + D + L + CS + `CS%` + PKatt + PKA + PKsv + 
                      PKm + `Save%` + SoTA90, data = GK)
 summary(model_saving)
@@ -67,3 +73,28 @@ predicted_saves_goalkeeper1 <- predict(model_saving, newdata = goalie)
 print(predicted_saves_goalkeeper1)
 ```
 
+
+And here is a similar model to predict how many saved shots a team may get 
+```{r}
+tmshots=read_html('https://fbref.com/en/comps/Big5/shooting/squads/Big-5-European-Leagues-Stats',as.data.frame=TRUE,stringAsFactors=TRUE) %>% html_nodes("table") %>% .[[1]] %>% html_table(fill=TRUE)
+names(tmshots) <- tmshots[1,]
+tmshots <- tmshots[-1,] 
+
+numeric_columns <- tmshots[sapply(tmshots, is.numeric)]
+numeric_columns <- na.omit(numeric_columns)
+
+tmshots$glsprgm <- as.numeric(tmshots$Gls) / as.numeric(tmshots$`90s`)
+tmshots$exsvs <-  as.numeric(tmshots$`SoT/90`) - as.numeric(tmshots$glsprgm)
+
+model_shooting <- lm(exsvs ~ `Sh/90` + `SoT/90` + 
+                       `G/Sh` + `G/SoT` + xG + `npxG/Sh`, data = tmshots)
+
+```
+
+Input the team name here to get an estimation of how many saves a keeper will get playing against them. 
+```{r}
+opshots <- tmshots %>% filter(Squad == "Nott'ham Forest")
+predicted_shots_saved <- predict(model_shooting, newdata = opshots)
+
+unname(predicted_shots_saved)
+```
