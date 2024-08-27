@@ -9,8 +9,10 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+delete hashtags to download packages
 ```{r}
 #install.packages(dplyr)
+#install.packages("ggthemes")
 library(dplyr)
 ```
 
@@ -21,7 +23,7 @@ GK=read_html('https://fbref.com/en/comps/Big5/keepers/players/Big-5-European-Lea
 ```
 
 This cleans the data, converts the column types to numeric, and adds a few additional stats 
-```{r}
+```{r, ECHO = FALSE, include=FALSE}
 
 names(GK) <- GK[1,]
 GK <- GK[-1,] 
@@ -58,16 +60,14 @@ GK$exSaves <- GK$SoTA90 * (GK$`Save%`/100)
 Specifing the model 
 ```{r, ECHO = FALSE, include=FALSE}
 
-model_saving <- lm(exSaves ~ MP + `90s` + GA + GA90 + SoTA + 
-                     `Save%` + W + D + L + CS + `CS%` + PKatt + PKA + PKsv + 
-                     PKm + SoTA90, data = GK)
+model_saving <- lm(exSaves ~ MP + GA + GA90 + SoTA + `Save%` + CS + `CS%` + PKatt + PKA + SoTA90, data = GK)
 summary(model_saving)
 ```
 
 
 Insert keeper name and then run chunk to estimate saves using the model
 ```{r}
-goalie <- GK %>% filter(Player == "Guglielmo Vicario")
+goalie <- GK %>% filter(Player == "Jordan Pickford")
 
 predicted_saves_goalkeeper1 <- predict(model_saving, newdata = goalie)
 print(predicted_saves_goalkeeper1)
@@ -93,7 +93,7 @@ model_shooting <- lm(exsvs ~ `Sh/90` + `SoT/90` +
 
 Input the team name here to get an estimation of how many saves a keeper will get playing against them. 
 ```{r}
-opshots <- tmshots %>% filter(Squad == "Nott'ham Forest")
+opshots <- tmshots %>% filter(Squad == "Tottenham")
 
 predicted_shots_saved <- suppressWarnings(predict(model_shooting, newdata = opshots))
 attr(predicted_shots_saved, "non-estim") <- NULL
@@ -108,24 +108,32 @@ Making some graphs from our data
 
 ```{r}
 library(ggplot2)
-
+library(ggthemes)
 GK_filtered <- GK %>% filter(Comp == "eng Premier League")
 
-ggplot(GK_filtered, aes(x = Player, y = exSaves)) +
-  geom_bar(stat = "identity", fill = "navy") +
+ggplot(GK_filtered, aes(x = Player)) +
+  geom_bar(aes(y = SoTA90), stat = "identity", fill = "red", alpha = 0.7) + 
+  geom_bar(aes(y = exSaves), stat = "identity", fill = "skyblue", width = 0.7) +
   theme_minimal() +
-  labs(title = "Expected Saves by Goalkeeper (English Premier League)", x = "Player", y = "Expected Saves") +
+  labs(title = "Expected Saves and Shots on Target by Goalkeeper (EPL)", 
+       x = "Player", y = "Values") +
+  theme_light() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 
 ```{r}
 tmshots_filtered <- tmshots %>% filter(Comp == "eng Premier League")
+tmshots_filtered <- tmshots_filtered %>%
+  mutate(
+    `SoT/90` = as.numeric(`SoT/90`))
 
-ggplot(tmshots_filtered, aes(x = Squad, y = exsvs)) +
-  geom_bar(stat = "identity", fill = "navy") +
+ggplot(tmshots_filtered, aes(x = Squad)) +
+  geom_bar(aes(y = `SoT/90`), stat = "identity", fill = "green", alpha = 0.7) + 
+  geom_bar(aes(y = exsvs), stat = "identity", fill = "red", width = 0.7) +
   theme_minimal() +
   labs(title = "Expected Saves by Squad (English Premier League)", x = "Squad", y = "Expected Shots Saved") +
+  theme_light() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
